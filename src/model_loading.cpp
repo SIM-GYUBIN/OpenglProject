@@ -93,16 +93,17 @@ int main()
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
     // build and compile shaders
     // -------------------------
     Shader skyboxShader("shader/6.1.skybox.vs", "shader/6.1.skybox.fs");
     Shader lightCubeShader("shader/4.2.light_cube.vs", "shader/4.2.light_cube.fs");
-#ifndef USE_FLASH_SHADER
+
     Shader ourShader("shader/1.model_loading.vs", "shader/1.model_loading.fs");
-#else
+
     Shader lightingShader("shader/5.4.light_casters.vs", "shader/5.4.light_casters.fs");
-#endif
+
 
     // load models
     // -----------
@@ -212,110 +213,113 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-#ifndef USE_FLASH_SHADER
-        // don't forget to enable shader before setting uniforms
-        ourShader.use();
+        //기본 상태 directional light
+        if (!flashEnabled) {
+            // don't forget to enable shader before setting uniforms
+            ourShader.use();
 
-        // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = camera.GetViewMatrix();
-        ourShader.setMat4("projection", projection);
-        ourShader.setMat4("view", view);
-   
-        //draw light
-        ourShader.setInt("boollight", lgtEnabled);
-        ourShader.use();
-        ourShader.setVec3("light.position", lightPos);
-        glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);   
-        //glm::vec3 direction = glm::vec3(3.21f, -46.9f, 98.2f);
-        ourShader.setVec3("light.direction", direction);
-        ourShader.setVec3("viewPos", camera.Position);
+            // view/projection transformations
+            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+            glm::mat4 view = camera.GetViewMatrix();
+            ourShader.setMat4("projection", projection);
+            ourShader.setMat4("view", view);
 
-        // light properties
-        glm::vec3 lightColor = glm::vec3(2.0f, 2.0f, 2.0f);
-        glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f); // decrease the influence
-        glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f); // low influence
-        ourShader.setVec3("light.ambient", ambientColor);
-        ourShader.setVec3("light.diffuse", diffuseColor);
-        ourShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+            //draw light
+            ourShader.setInt("boollight", lgtEnabled);
+            ourShader.use();
+            ourShader.setVec3("light.position", lightPos);
+            glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
+            //glm::vec3 direction = glm::vec3(3.21f, -46.9f, 98.2f);
+            ourShader.setVec3("light.direction", direction);
+            ourShader.setVec3("viewPos", camera.Position);
 
-        ourShader.setFloat("light.constant", 1.0f);
-        ourShader.setFloat("light.linear", 0.09f);
-        ourShader.setFloat("light.quadratic", 0.032f);
+            // light properties
+            glm::vec3 lightColor = glm::vec3(2.0f, 2.0f, 2.0f);
+            glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f); // decrease the influence
+            glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f); // low influence
+            ourShader.setVec3("light.ambient", ambientColor);
+            ourShader.setVec3("light.diffuse", diffuseColor);
+            ourShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
 
-        // material properties
-        ourShader.setFloat("shininess", 32.0f);
+            ourShader.setFloat("light.constant", 1.0f);
+            ourShader.setFloat("light.linear", 0.09f);
+            ourShader.setFloat("light.quadratic", 0.032f);
 
-        // render the loaded model
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", model);
-        ourModel.Draw(ourShader);
+            // material properties
+            ourShader.setFloat("shininess", 32.0f);
 
+            // render the loaded model
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
+            model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
+            ourShader.setMat4("model", model);
+            ourModel.Draw(ourShader);
 
+            // also draw the lamp object
+            lightCubeShader.use();
+            lightCubeShader.setMat4("projection", projection);
+            lightCubeShader.setMat4("view", view);
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, lightPos);
+            model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
+            lightCubeShader.setMat4("model", model);
+            lightCubeShader.setVec3("LightColor", ambientColor + diffuseColor);
 
-        // also draw the lamp object
-        lightCubeShader.use();
-        lightCubeShader.setMat4("projection", projection);
-        lightCubeShader.setMat4("view", view);
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, lightPos);
-        model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
-        lightCubeShader.setMat4("model", model);
-        lightCubeShader.setVec3("LightColor", ambientColor + diffuseColor);
-
-        glBindVertexArray(lightCubeVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-#else
-        // be sure to activate shader when setting uniforms/drawing objects
-        lightingShader.use();
-        lightingShader.setVec3("light.position", camera.Position);
-        lightingShader.setVec3("light.direction", camera.Front);
-        lightingShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
-        lightingShader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
-        lightingShader.setVec3("viewPos", camera.Position);
-
-        // light properties
-        lightingShader.setVec3("light.ambient", 1.0f, 1.0f, 1.0f);
-        // we configure the diffuse intensity slightly higher; the right lighting conditions differ with each lighting method and environment.
-        // each environment and lighting type requires some tweaking to get the best out of your environment.
-        lightingShader.setVec3("light.diffuse", 0.8f, 0.8f, 0.8f);
-        lightingShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
-        lightingShader.setFloat("light.constant", 1.0f);
-        lightingShader.setFloat("light.linear", 0.09f);
-        lightingShader.setFloat("light.quadratic", 0.032f);
-
-        // material properties
-        lightingShader.setFloat("shininess", 32.0f);
-
-        // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = camera.GetViewMatrix();
-        lightingShader.setMat4("projection", projection);
-        lightingShader.setMat4("view", view);
-
-        // render the loaded model
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
-        lightingShader.setMat4("model", model);
-        ourModel.Draw(lightingShader);
-#endif
-        if(skyEnabled){
-            glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-            skyboxShader.use();
-            view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
-            skyboxShader.setMat4("view", view);
-            skyboxShader.setMat4("projection", projection);
-            glBindVertexArray(skyboxVAO);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+            glBindVertexArray(lightCubeVAO);
             glDrawArrays(GL_TRIANGLES, 0, 36);
-            glBindVertexArray(0);
-            glDepthFunc(GL_LESS); // set depth function back to default
+            if (skyEnabled) {
+                glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+                skyboxShader.use();
+                view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
+                skyboxShader.setMat4("view", view);
+                skyboxShader.setMat4("projection", projection);
+                glBindVertexArray(skyboxVAO);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+                glDrawArrays(GL_TRIANGLES, 0, 36);
+                glBindVertexArray(0);
+                glDepthFunc(GL_LESS); // set depth function back to default
+            }
+
         }
+        //c 눌렀을때 손전등
+        else if (flashEnabled) {
+            // be sure to activate shader when setting uniforms/drawing objects
+            lightingShader.use();
+            lightingShader.setVec3("light.position", camera.Position);
+            lightingShader.setVec3("light.direction", camera.Front);
+            lightingShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
+            lightingShader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
+            lightingShader.setVec3("viewPos", camera.Position);
+
+            // light properties
+            lightingShader.setVec3("light.ambient", 1.0f, 1.0f, 1.0f);
+            // we configure the diffuse intensity slightly higher; the right lighting conditions differ with each lighting method and environment.
+            // each environment and lighting type requires some tweaking to get the best out of your environment.
+            lightingShader.setVec3("light.diffuse", 0.8f, 0.8f, 0.8f);
+            lightingShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+            lightingShader.setFloat("light.constant", 1.0f);
+            lightingShader.setFloat("light.linear", 0.09f);
+            lightingShader.setFloat("light.quadratic", 0.032f);
+
+            // material properties
+            lightingShader.setFloat("shininess", 32.0f);
+
+            // view/projection transformations
+            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+            glm::mat4 view = camera.GetViewMatrix();
+            lightingShader.setMat4("projection", projection);
+            lightingShader.setMat4("view", view);
+
+            // render the loaded model
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
+            model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
+            lightingShader.setMat4("model", model);
+            ourModel.Draw(lightingShader);
+        }
+
+
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

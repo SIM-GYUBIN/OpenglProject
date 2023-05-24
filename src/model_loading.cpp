@@ -38,6 +38,8 @@ bool flashEnabled = false;
 bool flashKeyPressed = false;
 bool nmEnabled = false;
 bool nmKeyPressed = false;
+bool shadowEnabled = false;
+bool shadowKeyPressed = false;
 
 // camera
 Camera camera(glm::vec3(40.0f, 8.0f, 3.0f));
@@ -105,6 +107,9 @@ int main()
 
     Shader lightingShader("shader/light_casters.vs", "shader/light_casters.fs");
 
+    //Shader shader("shader/3.1.2.shadow_mapping.vs", "shader/3.1.2.shadow_mapping.fs");
+    Shader simpleDepthShader("shader/3.1.2.shadow_mapping_depth.vs", "shader/3.1.2.shadow_mapping_depth.fs");
+
 
     // load models
     // -----------
@@ -112,7 +117,6 @@ int main()
     Model ourModel("resources/summer/realsummer.obj");
 
     unsigned int normalMap = loadTexture("resources/summer/Summer_Normal_LOD2_u0_v0.png");
-    ourShader.setInt("normalMap", 0);
 
     float skyboxVertices[] = {
         // positions          
@@ -194,9 +198,26 @@ int main()
     };
     unsigned int starcubemapTexture = loadCubemap(starfaces);
 
-    // shader configuration
+    // shadow configuration
     // --------------------
-
+    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+    unsigned int depthMapFBO;
+    glGenFramebuffers(1, &depthMapFBO);
+    // create depth texture
+    unsigned int depthMap;
+    glGenTextures(1, &depthMap);
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // attach depth texture as FBO's depth buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
@@ -242,6 +263,7 @@ int main()
             ourShader.setInt("nm", nmEnabled);
             ourShader.use();
             ourShader.setVec3("light.position", lightPos);
+            ourShader.setVec3("lightPos", lightPos);
             //glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
             glm::vec3 direction = glm::vec3(3.21f, -46.9f, 98.2f);
             ourShader.setVec3("light.direction", direction);
@@ -269,6 +291,7 @@ int main()
             ourShader.setMat4("model", model);
             ourModel.Draw(ourShader);
 
+            //Z키 하늘 배경
             if (skyEnabled) {
                 glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
                 skyboxShader.use();
@@ -320,6 +343,7 @@ int main()
             lightingShader.setMat4("model", model);
             ourModel.Draw(lightingShader);
 
+            //Z키 까만 배경
             if (skyEnabled) {
                 glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
                 skyboxShader.use();
@@ -395,7 +419,7 @@ void processInput(GLFWwindow *window)
     {
         flashKeyPressed = false;
     }
-    //V키 flash light
+    //V키 normalmap
     if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS && !nmKeyPressed)
     {
         nmEnabled = !nmEnabled;
@@ -404,6 +428,16 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE)
     {
         nmKeyPressed = false;
+    }
+    //B키 shadow light
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !shadowKeyPressed)
+    {
+        shadowEnabled = !shadowEnabled;
+        shadowKeyPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
+    {
+        shadowKeyPressed = false;
     }
 
 

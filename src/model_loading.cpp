@@ -100,16 +100,14 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader skyboxShader("shader/6.1.skybox.vs", "shader/6.1.skybox.fs");
-    Shader ourShader("shader/1.model_loading.vs", "shader/1.model_loading.fs");
+    Shader skyboxShader("shader/skybox.vs", "shader/skybox.fs");
+    Shader ourShader("shader/model_loading.vs", "shader/model_loading.fs");
 
-    Shader lightingShader("shader/5.4.light_casters.vs", "shader/5.4.light_casters.fs");
+    Shader lightingShader("shader/light_casters.vs", "shader/light_casters.fs");
 
 
     // load models
     // -----------
-    //Model ourModel("resources/Textures_MayaFile/Textures/untitled.obj");
-    //Model ourModel("resources/land/mountains028.obj");
     //Model ourModel("resources/summer/summer.obj");
     Model ourModel("resources/summer/realsummer.obj");
 
@@ -160,10 +158,6 @@ int main()
         -1.0f, -1.0f,  1.0f,
          1.0f, -1.0f,  1.0f
     };
-
-    unsigned int lightCubeVAO;
-    glGenVertexArrays(1, &lightCubeVAO);
-    glBindVertexArray(lightCubeVAO);
 
     // skybox VAO
     unsigned int skyboxVAO, skyboxVBO;

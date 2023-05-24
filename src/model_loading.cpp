@@ -188,6 +188,18 @@ int main()
     };
     unsigned int cubemapTexture = loadCubemap(faces);
 
+    // load textures
+    vector<std::string> starfaces
+    {
+        "resources/skybox/star.jpg",
+        "resources/skybox/star.jpg",
+        "resources/skybox/star.jpg",
+        "resources/skybox/starbo.jpg",
+        "resources/skybox/star.jpg",
+        "resources/skybox/star.jpg"
+    };
+    unsigned int starcubemapTexture = loadCubemap(starfaces);
+
     // shader configuration
     // --------------------
 
@@ -236,13 +248,13 @@ int main()
             ourShader.setInt("nm", nmEnabled);
             ourShader.use();
             ourShader.setVec3("light.position", lightPos);
-            glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
-            //glm::vec3 direction = glm::vec3(3.21f, -46.9f, 98.2f);
+            //glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
+            glm::vec3 direction = glm::vec3(3.21f, -46.9f, 98.2f);
             ourShader.setVec3("light.direction", direction);
             ourShader.setVec3("viewPos", camera.Position);
 
             // light properties
-            glm::vec3 lightColor = glm::vec3(2.0f, 2.0f, 2.0f);
+            glm::vec3 lightColor = glm::vec3(3.0f, 3.0f, 3.0f);
             glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f); // decrease the influence
             glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f); // low influence
             ourShader.setVec3("light.ambient", ambientColor);
@@ -313,6 +325,20 @@ int main()
             model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
             lightingShader.setMat4("model", model);
             ourModel.Draw(lightingShader);
+
+            if (skyEnabled) {
+                glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+                skyboxShader.use();
+                view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
+                skyboxShader.setMat4("view", view);
+                skyboxShader.setMat4("projection", projection);
+                glBindVertexArray(skyboxVAO);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_CUBE_MAP, starcubemapTexture);
+                glDrawArrays(GL_TRIANGLES, 0, 36);
+                glBindVertexArray(0);
+                glDepthFunc(GL_LESS); // set depth function back to default
+            }
         }
 
 

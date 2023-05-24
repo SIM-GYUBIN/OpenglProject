@@ -24,6 +24,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 unsigned int loadCubemap(vector<std::string> faces);
+unsigned int loadTexture(const char* path);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -35,6 +36,8 @@ bool lgtEnabled = false;
 bool lgtKeyPressed = false;
 bool flashEnabled = false;
 bool flashKeyPressed = false;
+bool nmEnabled = false;
+bool nmKeyPressed = false;
 
 // camera
 Camera camera(glm::vec3(40.0f, 8.0f, 3.0f));
@@ -98,8 +101,6 @@ int main()
     // build and compile shaders
     // -------------------------
     Shader skyboxShader("shader/6.1.skybox.vs", "shader/6.1.skybox.fs");
-    Shader lightCubeShader("shader/4.2.light_cube.vs", "shader/4.2.light_cube.fs");
-
     Shader ourShader("shader/1.model_loading.vs", "shader/1.model_loading.fs");
 
     Shader lightingShader("shader/5.4.light_casters.vs", "shader/5.4.light_casters.fs");
@@ -111,7 +112,10 @@ int main()
     //Model ourModel("resources/land/mountains028.obj");
     //Model ourModel("resources/summer/summer.obj");
     Model ourModel("resources/summer/realsummer.obj");
-        
+
+    unsigned int normalMap = loadTexture("resources/summer/Summer_Normal_LOD2_u0_v0.png");
+    ourShader.setInt("normalMap", 0);
+
     float skyboxVertices[] = {
         // positions          
         -1.0f,  1.0f, -1.0f,
@@ -186,12 +190,12 @@ int main()
 
     // shader configuration
     // --------------------
- 
 
-    //shader.setInt("skybox", 0);
 
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
+
+
 
     // render loop
     // -----------
@@ -213,6 +217,9 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, normalMap);
+
         //기본 상태 directional light
         if (!flashEnabled) {
             // don't forget to enable shader before setting uniforms
@@ -226,6 +233,7 @@ int main()
 
             //draw light
             ourShader.setInt("boollight", lgtEnabled);
+            ourShader.setInt("nm", nmEnabled);
             ourShader.use();
             ourShader.setVec3("light.position", lightPos);
             glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
@@ -255,18 +263,6 @@ int main()
             ourShader.setMat4("model", model);
             ourModel.Draw(ourShader);
 
-            // also draw the lamp object
-            lightCubeShader.use();
-            lightCubeShader.setMat4("projection", projection);
-            lightCubeShader.setMat4("view", view);
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, lightPos);
-            model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
-            lightCubeShader.setMat4("model", model);
-            lightCubeShader.setVec3("LightColor", ambientColor + diffuseColor);
-
-            glBindVertexArray(lightCubeVAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
             if (skyEnabled) {
                 glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
                 skyboxShader.use();
@@ -326,9 +322,6 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-    // optional: de-allocate all resources once they've outlived their purpose:
-    // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &lightCubeVAO);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
@@ -381,6 +374,16 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_C) == GLFW_RELEASE)
     {
         flashKeyPressed = false;
+    }
+    //V키 flash light
+    if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS && !nmKeyPressed)
+    {
+        nmEnabled = !nmEnabled;
+        nmKeyPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE)
+    {
+        nmKeyPressed = false;
     }
 
 
@@ -453,6 +456,45 @@ unsigned int loadCubemap(vector<std::string> faces)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+
+// utility function for loading a 2D texture from file
+// ---------------------------------------------------
+unsigned int loadTexture(char const* path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char* data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
 
     return textureID;
 }

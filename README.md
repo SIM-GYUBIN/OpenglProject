@@ -1,5 +1,7 @@
 # OpenglProject
-23-1 GPU Programming 강의 opengl 개인 프로젝트
+23-1 GPU Programming 강의 OpenGL 개인 프로젝트
+
+수강생 중 실습 최고점
 
 ### obj model loading using Assimp
 ![g1](https://github.com/SIM-GYUBIN/c-1/assets/89975936/64cfecad-d95d-4574-bf7e-083dc2732121)

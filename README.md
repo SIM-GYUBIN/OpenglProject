@@ -7,5 +7,5 @@
 ### Day ( day skybox & directional light )
 ![directional light](https://github.com/SIM-GYUBIN/c-1/assets/89975936/c47fd9a5-2719-4302-83c9-5d5379232478)
 
-### Night ( nightsky box & spotlight )
+### Night ( night skybox & spotlight )
 ![night](https://github.com/SIM-GYUBIN/c-1/assets/89975936/2eb51d16-5e6f-4ec2-913e-7d1760efc6ba)
